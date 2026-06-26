@@ -1,0 +1,22 @@
+﻿# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Build
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
