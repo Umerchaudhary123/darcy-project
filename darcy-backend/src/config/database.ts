@@ -1,5 +1,4 @@
 import { Sequelize } from 'sequelize-typescript';
-import path from 'path';
 import logger from '../utils/logger';
 
 // Import all models
@@ -15,9 +14,15 @@ import { AvailabilitySlot } from '../modules/availability/availability.model';
 import { TimeTracking } from '../modules/admin/timeTracking.model';
 import { PendingOnboarding } from '../modules/onboarding/onboarding.model';
 
-export const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: path.join(process.cwd(), 'darcy_demo.sqlite'),
+export const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  dialect: 'postgres',
+  protocol: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
   logging: false,
   models: [
     User,

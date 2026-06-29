@@ -5,9 +5,15 @@ dotenv.config();
 import { Sequelize, DataTypes } from 'sequelize';
 import logger from '../utils/logger';
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: './darcy_demo.sqlite',
+const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  dialect: 'postgres',
+  protocol: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
   logging: false,
 });
 

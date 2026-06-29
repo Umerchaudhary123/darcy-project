@@ -7,9 +7,15 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: './darcy_demo.sqlite',
+const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  dialect: 'postgres',
+  protocol: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
   logging: false,
 });
 
@@ -18,11 +24,11 @@ async function seed() {
     await sequelize.authenticate();
     logger.info('Seeder connected to SQLite');
 
-    const adminPassword    = await bcrypt.hash(process.env.ADMIN_PASSWORD       || 'Admin@123456',      12);
-    const superPassword    = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123456', 12);
-    const adminEmail       = process.env.ADMIN_EMAIL       || 'admin@darcystaffing.com';
-    const superAdminEmail  = process.env.SUPER_ADMIN_EMAIL || 'superadmin@darcystaffing.com';
-    const now              = new Date().toISOString();
+    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 12);
+    const superPassword = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123456', 12);
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@darcystaffing.com';
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'superadmin@darcystaffing.com';
+    const now = new Date().toISOString();
 
     // Check if admin exists
     const [admins] = await sequelize.query(
