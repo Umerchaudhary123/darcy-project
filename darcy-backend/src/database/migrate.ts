@@ -22,7 +22,7 @@ async function migrate() {
 
   try {
     await sequelize.authenticate();
-    logger.info('Connected to SQLite database');
+    logger.info('Connected to PostgreSQL database');
 
     // Users
     await qi.createTable('users', {
