@@ -45,7 +45,10 @@ export class DocumentController {
     try {
       if (!req.file) throw new AppError('No file uploaded', 400);
 
-      const file = req.file as Express.MulterS3.File;
+      const file = req.file as Express.Multer.File & {
+        key: string;
+        location: string;
+      };
 
       let clientId: string;
       if (req.user!.role === 'client') {

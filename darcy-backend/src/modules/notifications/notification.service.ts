@@ -13,8 +13,7 @@ interface CreateNotificationInput {
 }
 
 export const createNotification = async (input: CreateNotificationInput): Promise<Notification> => {
-  const notification = await Notification.create(input);
-
+  const notification = await Notification.create(input as any);
   // Fire-and-forget Firebase push
   sendFirebaseNotification(input.userId, {
     title: input.title,

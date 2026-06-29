@@ -45,10 +45,18 @@ export const errorHandler = (
     logger.error('Unhandled error:', err);
   }
 
-  res.status(statusCode).json({
-    success: false,
-    message,
-    ...(details && { details }),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+  const response: any = {
+  success: false,
+  message,
+};
+
+if (details !== undefined) {
+  response.details = details;
+}
+
+if (process.env.NODE_ENV === 'development') {
+  response.stack = err.stack;
+}
+
+res.status(statusCode).json(response);
 };
