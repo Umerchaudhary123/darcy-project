@@ -22,7 +22,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL!, {
 async function seed() {
   try {
     await sequelize.authenticate();
-    logger.info('Seeder connected to SQLite');
+    logger.info('Seeder connected to PostgreSQL');
 
     const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 12);
     const superPassword = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123456', 12);
@@ -39,15 +39,15 @@ async function seed() {
       await sequelize.query(`
         INSERT INTO users (id, name, email, password, role, is_active, created_at, updated_at)
         VALUES (
-          '${uuidv4()}',
-          'Admin User',
-          '${adminEmail}',
-          '${adminPassword}',
-          'admin',
-          1,
-          '${now}',
-          '${now}'
-        )
+  '${uuidv4()}',
+  'Admin User',
+  '${adminEmail}',
+  '${adminPassword}',
+  'admin',
+  TRUE,
+  '${now}',
+  '${now}'
+)
       `);
       logger.info(`✅ Admin created: ${adminEmail}`);
     } else {
@@ -63,15 +63,15 @@ async function seed() {
       await sequelize.query(`
         INSERT INTO users (id, name, email, password, role, is_active, created_at, updated_at)
         VALUES (
-          '${uuidv4()}',
-          'Super Admin',
-          '${superAdminEmail}',
-          '${superPassword}',
-          'super_admin',
-          1,
-          '${now}',
-          '${now}'
-        )
+  '${uuidv4()}',
+  'Super Admin',
+  '${superAdminEmail}',
+  '${superPassword}',
+  'super_admin',
+  TRUE,
+  '${now}',
+  '${now}'
+)
       `);
       logger.info(`✅ Super Admin created: ${superAdminEmail}`);
     } else {
