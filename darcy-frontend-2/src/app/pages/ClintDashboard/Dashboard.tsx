@@ -21,7 +21,7 @@ export const ClientDashboard: React.FC = () => {
       try {
         const [appRes, statRes, docRes, notifRes] = await Promise.all([
           applicantsApi.getMy({ limit: 5 }),
-          applicantsApi.getStats(),
+          applicantsApi.getMyStats(),
           documentsApi.getMy(),
           notificationsApi.getAll({ limit: 5 }),
         ]);

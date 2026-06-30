@@ -94,7 +94,12 @@ export const applicantsApi = {
     api.get<ApiResponse<Applicant[]>>('/applicants/my', { params }),
 
   getStats: (clientId?: string) =>
-    api.get<ApiResponse<PipelineStats>>('/applicants/stats', { params: { clientId } }),
+  api.get<ApiResponse<PipelineStats>>('/applicants/stats', {
+    params: { clientId },
+  }),
+
+getMyStats: () =>
+  api.get<ApiResponse<PipelineStats>>('/applicants/my/stats'),
 
   create: (data: { clientId: string; firstName: string; lastName: string; email?: string; phone?: string; source?: string }) =>
     api.post<ApiResponse<Applicant>>('/applicants', data),
