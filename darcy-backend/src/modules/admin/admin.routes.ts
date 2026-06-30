@@ -22,13 +22,22 @@ const displayOrderSchema = z.object({
 router.use(authenticate, requireAdmin);
 
 router.get('/stats', ctrl.getDashboardStats);
+
 router.get('/clients', ctrl.getClients);
 router.post('/clients', validate(addClientSchema), ctrl.addClient);
-router.get('/clients/:id', ctrl.getClient);
+
+// ✅ IMPORTANT: Put this BEFORE any /clients/:id routes
+router.put(
+  '/clients/display-order',
+  validate(displayOrderSchema),
+  ctrl.updateDisplayOrder
+);
+
 router.put('/clients/:id', ctrl.updateClient);
+router.get('/clients/:id', ctrl.getClient);
+
 router.patch('/clients/:id/archive', ctrl.setArchived);
 router.post('/clients/:id/resend-invite', ctrl.resendInvite);
-router.put('/clients/display-order', validate(displayOrderSchema), ctrl.updateDisplayOrder);
 
 // Time tracking
 router.post('/clients/:clientId/timer/start', ctrl.startTimer);
