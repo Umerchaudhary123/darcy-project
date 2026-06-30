@@ -268,4 +268,69 @@ export class ApplicantController {
       next(err);
     }
   };
+// Client: pipeline stats
+getMyStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const client = await Client.findOne({
+      where: {
+        userId: req.user!.id,
+      },
+    });
+
+    if (!client) {
+      throw new AppError('Client not found', 404);
+    }
+
+    const where = {
+      clientId: client.id,
+    };
+
+    const [
+      total,
+      interviewReady,
+      inProgress,
+      disqualified,
+      hired,
+    ] = await Promise.all([
+      Applicant.count({ where }),
+      Applicant.count({
+        where: {
+          ...where,
+          pipelineStatus: 'interview_ready',
+        },
+      }),
+      Applicant.count({
+        where: {
+          ...where,
+          pipelineStatus: 'in_progress',
+        },
+      }),
+      Applicant.count({
+        where: {
+          ...where,
+          pipelineStatus: 'disqualified',
+        },
+      }),
+      Applicant.count({
+        where: {
+          ...where,
+          hireStatus: 'hired',
+        },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        interviewReady,
+        inProgress,
+        disqualified,
+        hired,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 }
