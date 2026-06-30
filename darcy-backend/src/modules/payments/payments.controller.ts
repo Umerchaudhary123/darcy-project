@@ -123,15 +123,28 @@ export class PaymentsController {
     const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string);
     console.log('✅ STRIPE SUB RETRIEVED:', stripeSub.id);
 
-    const user = await User.create({
-      name: pending.contactName || businessName || pending.businessName,
-      email: pending.email,
-      password: 'TEMP_' + Math.random().toString(36).slice(2),
-      role: 'client',
-      isActive: false,
-    });
+    // Check if client already exists for this email (prevents duplicate webhook crash)
+    const existingClient = await Client.findOne({ where: { email: pending.email } });
+    if (existingClient) {
+      console.log('ℹ️ CLIENT ALREADY EXISTS FOR THIS EMAIL — SKIPPING DUPLICATE CREATE:', existingClient.id);
+      await pending.update({ status: 'completed' });
+      return;
+    }
 
-    console.log('✅ USER CREATED:', user.id, user.email);
+    let user = await User.findOne({ where: { email: pending.email } });
+
+    if (!user) {
+      user = await User.create({
+        name: pending.contactName || businessName || pending.businessName,
+        email: pending.email,
+        password: 'TEMP_' + Math.random().toString(36).slice(2),
+        role: 'client',
+        isActive: false,
+      });
+      console.log('✅ USER CREATED:', user.id, user.email);
+    } else {
+      console.log('ℹ️ USER ALREADY EXISTS:', user.id, user.email);
+    }
 
     const maxOrder = (await Client.max('displayOrder') as number) || 0;
     const client = await Client.create({
@@ -233,15 +246,15 @@ export class PaymentsController {
     }
   };
   manualComplete = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { sessionId } = req.params;
-    console.log('🔧 MANUAL COMPLETE:', sessionId);
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    console.log('🔧 SESSION METADATA:', JSON.stringify(session.metadata));
-    await this._handleCheckoutComplete(session);
-    res.json({ success: true, message: 'Done' });
-  } catch (err) {
-    next(err);
-  }
-};
+    try {
+      const { sessionId } = req.params;
+      console.log('🔧 MANUAL COMPLETE:', sessionId);
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      console.log('🔧 SESSION METADATA:', JSON.stringify(session.metadata));
+      await this._handleCheckoutComplete(session);
+      res.json({ success: true, message: 'Done' });
+    } catch (err) {
+      next(err);
+    }
+  };
 }
