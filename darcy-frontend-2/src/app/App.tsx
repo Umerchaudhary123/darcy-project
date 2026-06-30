@@ -33,8 +33,10 @@ const App: React.FC = () => {
   const { loadUser, isLoading, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated) loadUser();
-  }, []);
+    if (isAuthenticated) {
+      loadUser();
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) return <LoadingScreen />;
 
