@@ -43,12 +43,11 @@ export class DocumentController {
   // Upload document (client or admin)
   upload = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log('📁 FILE UPLOAD:', req.file);
+
       if (!req.file) throw new AppError('No file uploaded', 400);
 
-      const file = req.file as Express.Multer.File & {
-        key: string;
-        location: string;
-      };
+      const file = req.file as any;
 
       let clientId: string;
       if (req.user!.role === 'client') {
@@ -63,17 +62,16 @@ export class DocumentController {
       const doc = await Document.create({
         clientId,
         uploadedBy: req.user!.id,
-        fileName: file.key,
+        fileName: file.key || file.filename,
         originalName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
-        s3Key: file.key,
-        s3Url: file.location,
+        s3Key: file.key || file.filename,
+        s3Url: file.location || file.path || `/uploads/${file.filename}`,
         documentType: req.body.documentType || 'general',
         status: 'pending',
       });
 
-      // Notify admins if client upload
       if (req.user!.role === 'client') {
         const admins = await (await import('../auth/user.model')).User.findAll({
           where: { role: ['admin', 'super_admin'] },
