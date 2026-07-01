@@ -7,6 +7,7 @@ import { s3Client } from '../../middleware/upload';
 import { AppError } from '../../middleware/errorHandler';
 import { createNotification } from '../notifications/notification.service';
 import { sendEmail, emailTemplates } from '../../utils/email';
+import logger from '../../utils/logger';
 
 export class DocumentController {
   // Client: get own documents
@@ -137,26 +138,34 @@ export class DocumentController {
         reviewedBy: req.user!.id,
       });
 
-      // Notify client
-      const client = await Client.findByPk(doc.clientId);
-      if (client?.userId) {
-        await createNotification({
-          userId: client.userId,
-          clientId: client.id,
-          title: `Document ${status === 'approved' ? 'Approved ✅' : 'Rejected ❌'}`,
-          body: `Your document "${doc.originalName}" has been ${status}.${notes ? ` Notes: ${notes}` : ''}`,
-          type: status === 'approved' ? 'document_approved' : 'document_rejected',
-          linkUrl: '/documents',
-        });
-
-        await sendEmail({
-          to: client.email,
-          subject: `Document ${status} — Darcy Staffing`,
-          html: emailTemplates.documentStatus(status as 'approved' | 'rejected', doc.originalName, notes),
-        });
-      }
-
+      // ✅ Response FORAN bhej do — main kaam (DB update) ho chuka hai
       res.json({ success: true, data: doc });
+
+      // ✅ Notification + Email background mein — inka slow/fail hona
+      // ab frontend ko kabhi affect nahi karega
+      setImmediate(async () => {
+        try {
+          const client = await Client.findByPk(doc.clientId);
+          if (client?.userId) {
+            await createNotification({
+              userId: client.userId,
+              clientId: client.id,
+              title: `Document ${status === 'approved' ? 'Approved ✅' : 'Rejected ❌'}`,
+              body: `Your document "${doc.originalName}" has been ${status}.${notes ? ` Notes: ${notes}` : ''}`,
+              type: status === 'approved' ? 'document_approved' : 'document_rejected',
+              linkUrl: '/documents',
+            });
+
+            await sendEmail({
+              to: client.email,
+              subject: `Document ${status} — Darcy Staffing`,
+              html: emailTemplates.documentStatus(status as 'approved' | 'rejected', doc.originalName, notes),
+            });
+          }
+        } catch (bgErr) {
+          logger.error('Review notification/email failed (non-blocking):', bgErr);
+        }
+      });
     } catch (err) {
       next(err);
     }
