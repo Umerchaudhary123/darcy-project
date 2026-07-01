@@ -25,12 +25,6 @@ const createApiClient = (): AxiosInstance => {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log("=================================");
-    console.log("REQUEST:", config.url);
-    console.log("TOKEN:", token);
-    console.log("AUTH:", config.headers.Authorization);
-    console.log("=================================");
-
     return config;
   });
 
@@ -39,9 +33,6 @@ const createApiClient = (): AxiosInstance => {
     (response) => response,
 
     async (error: AxiosError) => {
-      console.log("FAILED URL:", error.config?.url);
-      console.log("STATUS:", error.response?.status);
-
       const originalRequest: any = error.config;
 
       if (
@@ -75,10 +66,8 @@ const createApiClient = (): AxiosInstance => {
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", newRefreshToken);
 
-          // Update axios defaults
           client.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
-          // Update failed request
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
           return client(originalRequest);
