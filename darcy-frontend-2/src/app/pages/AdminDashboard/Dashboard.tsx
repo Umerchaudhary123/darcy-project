@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { Users, Plus, Archive, RotateCcw, Mail, Clock, ChevronRight, Calendar, FileText, MessageSquare, Bell } from 'lucide-react';
 import { adminApi, applicantsApi, notificationsApi } from '../../../services';
 import { PageHeader, SearchInput, StatusBadge, Spinner, EmptyState, Modal, Input, Select, Button, StatCard, Tabs } from '../../components/ui';
 import { formatDate, formatDateTime } from '../../../utils';
-import type { Client } from '../../../types';
-import { Users, Plus, Archive, RotateCcw, Mail, Clock, ChevronRight } from 'lucide-react';
+import { useAuthStore } from '../../context/authStore';
+import type { Client, Applicant, Notification } from '../../../types';
 
 const ITEM = 'CLIENT_CARD';
 
@@ -39,7 +40,7 @@ const ClientCard: React.FC<{
   return (
     <div
       ref={(node) => { drag(drop(node)); }}
-      className={`card-base p-5 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all ${isDragging ? 'opacity-40' : ''}`}
+      className={`card-base p-4 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all ${isDragging ? 'opacity-40' : ''}`}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex-1 min-w-0">
@@ -69,7 +70,7 @@ const ClientCard: React.FC<{
         </button>
         <button
           onClick={() => onArchive(client.id, client.status !== 'archived')}
-          className="btn-ghost p-1.5 text-xs"
+          className="btn-ghost p-1.5"
           title={client.status === 'archived' ? 'Restore' : 'Archive'}
         >
           {client.status === 'archived'
@@ -81,107 +82,17 @@ const ClientCard: React.FC<{
   );
 };
 
-// ─── Recent Applicants Widget ─────────────────────────────────────────────
-const RecentApplicants: React.FC = () => {
-  const navigate = useNavigate();
-  const [applicants, setApplicants] = useState<any[]>([]);
-
-  useEffect(() => {
-    applicantsApi.getAll({ limit: 5 }).then((r) => setApplicants(r.data.data)).catch(() => {});
-  }, []);
-
-  return (
-    <div className="card-base p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">Recent Applicants</h3>
-        <button onClick={() => navigate('/admin/pipeline')} className="text-xs text-brand hover:underline">
-          View all →
-        </button>
-      </div>
-      {applicants.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">No applicants yet</p>
-      ) : (
-        applicants.slice(0, 5).map((a) => (
-          <div key={a.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold flex-shrink-0 text-foreground">
-              {a.firstName?.[0]}{a.lastName?.[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{a.firstName} {a.lastName}</p>
-              <p className="text-xs text-muted-foreground">{formatDate(a.createdAt)}</p>
-            </div>
-            <StatusBadge status={a.pipelineStatus} />
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
-
-// ─── Recent Notifications Widget ──────────────────────────────────────────
-const RecentNotifications: React.FC = () => {
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<any[]>([]);
-
-  useEffect(() => {
-    notificationsApi.getAll().then((r) => setNotifications(r.data.data)).catch(() => {});
-  }, []);
-
-  return (
-    <div className="card-base p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">Notifications</h3>
-        <button onClick={() => navigate('/admin/notifications')} className="text-xs text-brand hover:underline">
-          View all →
-        </button>
-      </div>
-      {notifications.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">No notifications</p>
-      ) : (
-        notifications.slice(0, 5).map((n) => (
-          <div key={n.id} className={`py-2 border-b border-border last:border-0 ${!n.isRead ? 'opacity-100' : 'opacity-60'}`}>
-            <p className="text-xs font-medium">{n.title}</p>
-            <p className="text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
-
-// ─── Quick Actions Widget ─────────────────────────────────────────────────
-const QuickActions: React.FC = () => {
-  const navigate = useNavigate();
-  return (
-    <div className="card-base p-5">
-      <h3 className="font-semibold text-sm mb-3">Quick Actions</h3>
-      <div className="space-y-2">
-        {[
-          { label: '📋 View Pipeline', path: '/admin/pipeline' },
-          { label: '📅 Schedule', path: '/admin/calendar' },
-          { label: '📄 Documents', path: '/admin/documents' },
-          { label: '💬 Messages', path: '/admin/messages' },
-        ].map((item) => (
-          <button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className="w-full text-left text-sm px-3 py-2 rounded-md bg-secondary hover:bg-accent transition-colors"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // ─── Admin Dashboard ──────────────────────────────────────────────────────
 export const AdminDashboard: React.FC = () => {
+  const { user } = useAuthStore();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('active');
   const [stats, setStats] = useState({ totalClients: 0, activeClients: 0, totalApplicants: 0, interviewReady: 0 });
+  const [recentApplicants, setRecentApplicants] = useState<Applicant[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unread, setUnread] = useState(0);
   const [addModal, setAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ businessName: '', email: '', contactName: '', phone: '', contractorType: 'P&D' });
   const [adding, setAdding] = useState(false);
@@ -189,12 +100,17 @@ export const AdminDashboard: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [clientRes, statsRes] = await Promise.all([
+      const [clientRes, statsRes, appRes, notifRes] = await Promise.all([
         adminApi.getClients({ search: search || undefined, status: tab, all: true }),
         adminApi.getStats(),
+        applicantsApi.getAll({ limit: 5 }),
+        notificationsApi.getAll({ limit: 5 }),
       ]);
       setClients(clientRes.data.data);
       setStats(statsRes.data.data);
+      setRecentApplicants(appRes.data.data);
+      setNotifications(notifRes.data.data);
+      setUnread(notifRes.data.meta?.unreadCount || 0);
     } catch { } finally { setLoading(false); }
   }, [search, tab]);
 
@@ -245,57 +161,133 @@ export const AdminDashboard: React.FC = () => {
     { id: 'all', label: 'All' },
   ];
 
+  if (loading) return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="animate-fade-in">
         <PageHeader
-          title="Client Dashboard"
-          description="Manage all contractor accounts"
+          title={`Welcome, ${user?.name?.split(' ')[0] || 'Admin'} 👋`}
+          description="Here's what's happening across all contractor accounts."
           action={<Button onClick={() => setAddModal(true)} icon={<Plus className="w-4 h-4" />}>Add Client</Button>}
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="Total Clients" value={stats.totalClients} icon={<Users className="w-5 h-5" />} color="text-blue-400" />
           <StatCard label="Active Clients" value={stats.activeClients} icon={<Users className="w-5 h-5" />} color="text-green-400" />
           <StatCard label="Total Applicants" value={stats.totalApplicants} icon={<Users className="w-5 h-5" />} color="text-yellow-400" />
           <StatCard label="Interview Ready" value={stats.interviewReady} icon={<Users className="w-5 h-5" />} color="text-brand" />
         </div>
 
-        {/* Recent Activity Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          <RecentApplicants />
-          <RecentNotifications />
-          <QuickActions />
+        {/* Recent Activity — same layout as client dashboard */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          {/* Recent Applicants */}
+          <div className="lg:col-span-2 card-base p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Recent Applicants</h2>
+              <Link to="/admin/pipeline" className="text-xs text-brand hover:underline">View all →</Link>
+            </div>
+            {recentApplicants.length === 0 ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">No applicants yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {recentApplicants.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
+                    <div className="w-9 h-9 bg-primary/20 rounded-full flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
+                      {a.firstName?.[0]}{a.lastName?.[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{a.firstName} {a.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(a.createdAt)}</p>
+                    </div>
+                    <StatusBadge status={a.pipelineStatus} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right column */}
+          <div className="space-y-6">
+            {/* Notifications */}
+            <div className="card-base p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold flex items-center gap-2">
+                  Notifications
+                  {unread > 0 && (
+                    <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full">{unread}</span>
+                  )}
+                </h2>
+                <Link to="/admin/notifications" className="text-xs text-brand hover:underline">View all →</Link>
+              </div>
+              {notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No notifications</p>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.slice(0, 4).map((n) => (
+                    <div key={n.id} className={`p-3 rounded-lg text-sm ${n.isRead ? 'bg-secondary' : 'bg-primary/10 border border-primary/20'}`}>
+                      <p className="font-medium text-foreground">{n.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(n.createdAt)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="card-base p-5">
+              <h2 className="font-semibold mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Pipeline', href: '/admin/pipeline', icon: <Users className="w-4 h-4" /> },
+                  { label: 'Calendar', href: '/admin/calendar', icon: <Calendar className="w-4 h-4" /> },
+                  { label: 'Documents', href: '/admin/documents', icon: <FileText className="w-4 h-4" /> },
+                  { label: 'Messages', href: '/admin/messages', icon: <MessageSquare className="w-4 h-4" /> },
+                ].map((q) => (
+                  <Link
+                    key={q.href}
+                    to={q.href}
+                    className="flex flex-col items-center gap-2 p-4 bg-secondary hover:bg-accent rounded-lg transition-colors text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {q.icon}
+                    {q.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search clients…" className="sm:w-72" />
-          <Tabs tabs={tabs} active={tab} onChange={setTab} />
-          {clients.length > 0 && !search && (
-            <Button variant="secondary" size="sm" onClick={persistOrder} icon={<Clock className="w-3.5 h-3.5" />}>
-              Save Order
-            </Button>
+        {/* Client Cards Section */}
+        <div className="mb-4">
+          <h2 className="font-semibold text-lg mb-4">Client Accounts</h2>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search clients…" className="sm:w-72" />
+            <Tabs tabs={tabs} active={tab} onChange={setTab} />
+            {clients.length > 0 && !search && (
+              <Button variant="secondary" size="sm" onClick={persistOrder} icon={<Clock className="w-3.5 h-3.5" />}>
+                Save Order
+              </Button>
+            )}
+          </div>
+
+          {clients.length === 0 ? (
+            <EmptyState
+              icon={<Users className="w-12 h-12" />}
+              title="No clients found"
+              action={<Button onClick={() => setAddModal(true)}>Add First Client</Button>}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {clients.map((c, i) => (
+                <ClientCard key={c.id} client={c} index={i} onMove={moveCard} onDrop={persistOrder} onArchive={archive} />
+              ))}
+            </div>
           )}
         </div>
-
-        {/* Client Cards */}
-        {loading ? (
-          <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-        ) : clients.length === 0 ? (
-          <EmptyState
-            icon={<Users className="w-12 h-12" />}
-            title="No clients found"
-            action={<Button onClick={() => setAddModal(true)}>Add First Client</Button>}
-          />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {clients.map((c, i) => (
-              <ClientCard key={c.id} client={c} index={i} onMove={moveCard} onDrop={persistOrder} onArchive={archive} />
-            ))}
-          </div>
-        )}
 
         {/* Add Client Modal */}
         <Modal open={addModal} onClose={() => setAddModal(false)} title="Add New Client" size="md">
