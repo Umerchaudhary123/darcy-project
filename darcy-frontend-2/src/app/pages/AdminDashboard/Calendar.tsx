@@ -156,7 +156,6 @@ export const AdminCalendar: React.FC = () => {
     </div>
   );
 };
-
 // ─── Admin Documents ──────────────────────────────────────────────────────
 export const AdminDocuments: React.FC = () => {
   const [docs, setDocs] = useState<Document[]>([]);
@@ -216,9 +215,10 @@ export const AdminDocuments: React.FC = () => {
   return (
     <div className="animate-fade-in">
       <PageHeader title="Documents" description="Review and approve client documents" />
+
       <div className="mb-5 flex flex-col sm:flex-row gap-3">
         <Select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
-          options={clientOptions} className="sm:w-64" />
+          options={clientOptions} className="w-full sm:w-64" />
       </div>
 
       {!clientFilter ? (
@@ -228,36 +228,30 @@ export const AdminDocuments: React.FC = () => {
       ) : docs.length === 0 ? (
         <EmptyState icon={<FileText className="w-12 h-12" />} title="No documents" description="This client has not uploaded any documents." />
       ) : (
-        <div className="card-base overflow-hidden">
-          <Table headers={['Document', 'Type', 'Size', 'Uploaded', 'Status', 'Notes', 'Actions']}>
-            {docs.map((d) => (
-              <Tr key={d.id}>
-                <Td>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm font-medium truncate max-w-[180px]">{d.originalName}</span>
-                  </div>
-                </Td>
-                <Td><span className="text-xs text-muted-foreground capitalize">{d.documentType || 'general'}</span></Td>
-                <Td><span className="text-xs text-muted-foreground">{formatFileSize(d.fileSize)}</span></Td>
-                <Td><span className="text-xs text-muted-foreground">{formatDate(d.createdAt)}</span></Td>
-                <Td><StatusBadge status={d.status} /></Td>
-                <Td><span className="text-xs text-muted-foreground">{d.adminNotes || '—'}</span></Td>
-                <Td>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => download(d)} className="btn-ghost p-1.5" title="Download">
-                      <Download className="w-4 h-4" />
-                    </button>
-                    {d.status === 'pending' && (
-                      <button onClick={() => openReview(d)} className="btn-ghost p-1.5 text-brand" title="Review">
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </Td>
-              </Tr>
-            ))}
-          </Table>
+        <div className="space-y-2">
+          {docs.map((d) => (
+            <div key={d.id} className="card-base p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <FileText className="w-8 h-8 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{d.originalName}</p>
+                <p className="text-xs text-muted-foreground">
+                  <span className="capitalize">{d.documentType || 'general'}</span> · {formatFileSize(d.fileSize)} · {formatDate(d.createdAt)}
+                </p>
+                {d.adminNotes && <p className="text-xs text-muted-foreground mt-1 break-words">Note: {d.adminNotes}</p>}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+                <StatusBadge status={d.status} />
+                <button onClick={() => download(d)} className="btn-ghost p-1.5" title="Download">
+                  <Download className="w-4 h-4" />
+                </button>
+                {d.status === 'pending' && (
+                  <button onClick={() => openReview(d)} className="btn-ghost p-1.5 text-brand" title="Review">
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -265,7 +259,7 @@ export const AdminDocuments: React.FC = () => {
         {reviewModal.doc && (
           <div className="space-y-4">
             <div className="bg-secondary rounded p-3">
-              <p className="text-sm font-medium">{reviewModal.doc.originalName}</p>
+              <p className="text-sm font-medium truncate">{reviewModal.doc.originalName}</p>
               <p className="text-xs text-muted-foreground">{formatFileSize(reviewModal.doc.fileSize)}</p>
             </div>
             <Select label="Decision" value={reviewForm.status}
@@ -278,9 +272,9 @@ export const AdminDocuments: React.FC = () => {
             </div>
           </div>
         )}
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="secondary" onClick={() => setReviewModal({ open: false, doc: null })}>Cancel</Button>
-          <Button loading={saving} onClick={submitReview}
+        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-5">
+          <Button variant="secondary" onClick={() => setReviewModal({ open: false, doc: null })} className="w-full sm:w-auto">Cancel</Button>
+          <Button loading={saving} onClick={submitReview} className="w-full sm:w-auto"
             variant={reviewForm.status === 'approved' ? 'primary' : 'danger'}>
             {reviewForm.status === 'approved' ? 'Approve' : 'Reject'}
           </Button>
