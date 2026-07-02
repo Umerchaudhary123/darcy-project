@@ -436,46 +436,109 @@ export const AdminNotifications: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await notificationsApi.getAll();
+      setNotifications(r.data.data);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    notificationsApi.getAll().then((r) => setNotifications(r.data.data)).catch(() => { }).finally(() => setLoading(false));
+    load();
   }, []);
 
   const markRead = async (id: string) => {
     await notificationsApi.markRead(id);
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, isRead: true } : n
+      )
+    );
   };
 
   const markAll = async () => {
     await notificationsApi.markAllRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    toast.success('All marked as read');
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, isRead: true }))
+    );
+    toast.success("All notifications marked as read");
   };
 
   const unread = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Notifications" description={`${unread} unread`}
-        action={unread > 0 ? <Button variant="secondary" size="sm" onClick={markAll}>Mark All Read</Button> : undefined} />
-      {loading ? <div className="flex justify-center py-16"><Spinner size="lg" /></div> :
-        notifications.length === 0 ? <EmptyState icon={<Bell className="w-12 h-12" />} title="No notifications" description="You're all caught up!" /> :
-          <div className="space-y-2">
-            {notifications.map((n) => (
-              <div key={n.id} onClick={() => !n.isRead && markRead(n.id)}
-                className={`card-base p-4 cursor-pointer hover:border-border/80 transition-colors ${!n.isRead ? 'border-primary/40 bg-primary/5' : ''}`}>
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <p className={`text-sm font-medium ${!n.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
-                    {!n.isRead && <span className="inline-block w-2 h-2 bg-brand rounded-full mt-1" />}
-                  </div>
+      <PageHeader
+        title="Notifications"
+        description={`${unread} unread`}
+        action={
+          unread > 0 ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={markAll}
+            >
+              Mark All Read
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Spinner size="lg" />
+        </div>
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          icon={<Bell className="w-12 h-12" />}
+          title="No notifications"
+          description="You're all caught up!"
+        />
+      ) : (
+        <div className="space-y-2">
+          {notifications.map((n) => (
+            <div
+              key={n.id}
+              onClick={() => !n.isRead && markRead(n.id)}
+              className={`card-base p-4 cursor-pointer hover:border-border/80 transition-colors ${!n.isRead
+                  ? "border-primary/40 bg-primary/5"
+                  : ""
+                }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-sm font-medium break-words ${!n.isRead
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                      }`}
+                  >
+                    {n.title}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground mt-0.5 break-words">
+                    {n.body}
+                  </p>
+                </div>
+
+                <div className="flex sm:flex-col sm:text-right items-center sm:items-end gap-2 sm:gap-1 flex-shrink-0">
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDateTime(n.createdAt)}
+                  </p>
+
+                  {!n.isRead && (
+                    <span className="inline-block w-2 h-2 bg-brand rounded-full flex-shrink-0" />
+                  )}
                 </div>
               </div>
-            ))}
-          </div>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -328,7 +328,7 @@ export const AdminPipeline: React.FC = () => {
                       <td className="px-4 py-3"><StatusBadge status={a.backgroundStatus} /></td>
                       <td className="px-4 py-3"><StatusBadge status={a.drugScreenStatus} /></td>
                       <td className="px-4 py-3"><StatusBadge status={a.medCardStatus} /></td>
-                      <td className="px-4 py-3"><StatusBadge status={a.pipelineStatus} /></td>
+                      <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={a.pipelineStatus} /></td>
                       <td className="px-4 py-3">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(a.createdAt)}</span>
                       </td>

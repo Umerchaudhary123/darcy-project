@@ -344,14 +344,14 @@ export const ClientNotifications: React.FC = () => {
             {notifications.map((n) => (
               <div key={n.id} onClick={() => !n.isRead && markRead(n.id)}
                 className={`card-base p-4 cursor-pointer hover:border-border/80 transition-colors ${!n.isRead ? 'border-primary/40 bg-primary/5' : ''}`}>
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <p className={`text-sm font-medium ${!n.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium break-words ${!n.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 break-words">{n.body}</p>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
-                    {!n.isRead && <span className="inline-block w-2 h-2 bg-brand rounded-full mt-1" />}
+                  <div className="flex sm:flex-col sm:text-right items-center sm:items-end gap-2 sm:gap-1 flex-shrink-0">
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(n.createdAt)}</p>
+                    {!n.isRead && <span className="inline-block w-2 h-2 bg-brand rounded-full flex-shrink-0" />}
                   </div>
                 </div>
               </div>
