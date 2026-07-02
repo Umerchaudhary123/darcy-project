@@ -355,18 +355,18 @@ export const AdminPipeline: React.FC = () => {
 
       {/* Add Modal */}
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Applicant" size="md">
-        <div className="space-y-4">
+        <div className="max-h-[65vh] sm:max-h-[70vh] overflow-y-auto pr-1 space-y-4">
           <Select
             label="Client *"
             value={addForm.clientId}
             onChange={(e) => setAddForm({ ...addForm, clientId: e.target.value })}
             options={[{ value: '', label: 'Select client…' }, ...clients.map((c) => ({ value: c.id, label: c.businessName }))]}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="First Name *" value={addForm.firstName} onChange={(e) => setAddForm({ ...addForm, firstName: e.target.value })} />
             <Input label="Last Name *" value={addForm.lastName} onChange={(e) => setAddForm({ ...addForm, lastName: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Email" type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} />
             <Input label="Phone" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} />
           </div>
@@ -382,27 +382,27 @@ export const AdminPipeline: React.FC = () => {
             ]}
           />
         </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="secondary" onClick={() => setAddModal(false)}>Cancel</Button>
-          <Button loading={saving} onClick={addApplicant}>Add Applicant</Button>
+        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-5">
+          <Button variant="secondary" onClick={() => setAddModal(false)} className="w-full sm:w-auto">Cancel</Button>
+          <Button loading={saving} onClick={addApplicant} className="w-full sm:w-auto">Add Applicant</Button>
         </div>
       </Modal>
 
-      {/* Edit Modal */}
+      {/* Edit Modal — fixed: internal scroll so it never overflows the viewport on any screen size */}
       <Modal open={editModal.open} onClose={() => setEditModal({ open: false, applicant: null })} title="Edit Applicant" size="lg">
         {editModal.applicant && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="max-h-[65vh] sm:max-h-[70vh] overflow-y-auto pr-1 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="First Name" value={editForm.firstName || ''} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} />
               <Input label="Last Name" value={editForm.lastName || ''} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Email" value={editForm.email || ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
               <Input label="Phone" value={editForm.phone || ''} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
             </div>
             <div className="border-t border-border pt-4">
               <p className="text-sm font-medium mb-3">Vetting Status</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select label="AVP Status" value={editForm.avpStatus || 'pending'}
                   onChange={(e) => setEditForm({ ...editForm, avpStatus: e.target.value as any })}
                   options={VETTING_OPTIONS.avpStatus} />
@@ -435,9 +435,9 @@ export const AdminPipeline: React.FC = () => {
             </div>
           </div>
         )}
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="secondary" onClick={() => setEditModal({ open: false, applicant: null })}>Cancel</Button>
-          <Button loading={saving} onClick={saveEdit}>Save Changes</Button>
+        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-5">
+          <Button variant="secondary" onClick={() => setEditModal({ open: false, applicant: null })} className="w-full sm:w-auto">Cancel</Button>
+          <Button loading={saving} onClick={saveEdit} className="w-full sm:w-auto">Save Changes</Button>
         </div>
       </Modal>
     </div>
