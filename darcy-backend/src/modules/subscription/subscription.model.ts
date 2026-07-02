@@ -46,8 +46,15 @@ export class Subscription extends Model {
   @Column({ type: DataType.BOOLEAN, defaultValue: false })
   i9Service!: boolean;
 
-  @Column({ type: DataType.DECIMAL(10, 2), allowNull: true })
-  monthlyAmount!: number;
+  @Column({
+  type: DataType.DECIMAL(10, 2),
+  allowNull: true,
+  get() {
+    const value = this.getDataValue('monthlyAmount');
+    return value === null ? 0 : Number(value);
+  },
+})
+monthlyAmount!: number;
 
   @BelongsTo(() => Client)
   client!: Client;
