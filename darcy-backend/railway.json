@@ -5,10 +5,7 @@
     "buildCommand": "npm ci && npm run build"
   },
   "deploy": {
-    "preDeployCommand": [
-      "npm run migrate:prod",
-      "npm run seed:prod"
-    ],
+    "preDeployCommand": "npm run migrate:prod && npm run seed:prod",
     "startCommand": "npm start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
