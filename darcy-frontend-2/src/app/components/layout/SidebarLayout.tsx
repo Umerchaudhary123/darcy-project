@@ -123,7 +123,7 @@ export const SidebarLayout: React.FC<SidebarLayoutProps> = ({ navItems, children
       )}
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="w-full min-w-0 lg:ml-64 lg:w-[calc(100%-16rem)] flex flex-col min-h-screen">
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-20 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
           <button onClick={() => setMobileOpen(true)} className="btn-ghost p-2">
@@ -140,7 +140,7 @@ export const SidebarLayout: React.FC<SidebarLayoutProps> = ({ navItems, children
           <div className="w-9" />
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden overflow-y-auto">
           {children}
         </main>
       </div>

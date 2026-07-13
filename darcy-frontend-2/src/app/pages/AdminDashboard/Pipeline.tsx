@@ -328,7 +328,7 @@ export const AdminPipeline: React.FC = () => {
   ];
 
   return (
-    <div className="animate-fade-in">
+    <div className="min-w-0 animate-fade-in">
       <PageHeader
         title="Applicant Pipeline"
         description={`${total} applicants`}
@@ -348,7 +348,7 @@ export const AdminPipeline: React.FC = () => {
       />
 
       {/* Stats — 2 col mobile, 4 col desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
         <StatCard label="Total" value={stats.total} icon={<Users className="w-5 h-5" />} color="text-blue-400" />
         <StatCard label="Ready" value={stats.interviewReady} icon={<Users className="w-5 h-5" />} color="text-green-400" />
         <StatCard label="In Progress" value={stats.inProgress} icon={<Users className="w-5 h-5" />} color="text-yellow-400" />
@@ -357,7 +357,7 @@ export const AdminPipeline: React.FC = () => {
 
       {/* Filters */}
       <div className="space-y-3 mb-5">
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <SearchInput
             value={search}
             onChange={(v) => { setSearch(v); setPage(1); }}
@@ -367,7 +367,7 @@ export const AdminPipeline: React.FC = () => {
           <select
             value={clientFilter}
             onChange={(e) => { setClientFilter(e.target.value); setPage(1); }}
-            className="input-field w-36 sm:w-52 flex-shrink-0"
+            className="input-field w-full sm:w-52 flex-shrink-0"
           >
             {clientOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
