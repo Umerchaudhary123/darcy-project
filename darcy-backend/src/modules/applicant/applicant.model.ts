@@ -3,6 +3,27 @@ import {
 } from 'sequelize-typescript';
 import { Client } from '../client/client.model';
 
+export interface AiScoreBreakdown {
+  relevantExperience: number;
+  licensesAndSkills: number;
+  safetyAndCompliance: number;
+  workHistory: number;
+  resumeQuality: number;
+}
+
+export interface AiAssessment {
+  scoreBreakdown: AiScoreBreakdown;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  matchedSkills: string[];
+  missingRequirements: string[];
+  suggestedInterviewQuestions: string[];
+  experienceYears: number | null;
+  criteria: string;
+  disclaimer: string;
+}
+
 @Table({ tableName: 'applicants', timestamps: true, underscored: true })
 export class Applicant extends Model {
   @Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4, primaryKey: true })
@@ -87,6 +108,25 @@ export class Applicant extends Model {
   // Source
   @Column({ type: DataType.STRING(100), allowNull: true })
   source!: string; // e.g. 'Indeed', 'Referral', 'Direct'
+
+  // AI CV screening. The numeric score is kept separately for fast ranking.
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  aiScore!: number | null;
+
+  @Column({ type: DataType.STRING(30), allowNull: true })
+  aiRecommendation!: 'high_alignment' | 'good_alignment' | 'review' | 'limited_evidence' | null;
+
+  @Column({ type: DataType.JSONB, allowNull: true })
+  aiAssessment!: AiAssessment | null;
+
+  @Column({ type: DataType.DATE, allowNull: true })
+  aiAnalyzedAt!: Date | null;
+
+  @Column({ type: DataType.STRING(100), allowNull: true })
+  aiModel!: string | null;
+
+  @Column({ type: DataType.STRING(255), allowNull: true })
+  resumeFileName!: string | null;
 
   @BelongsTo(() => Client)
   client!: Client;

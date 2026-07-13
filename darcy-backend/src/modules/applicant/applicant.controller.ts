@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { Applicant } from './applicant.model';
 import { Client } from '../client/client.model';
 import { AppError } from '../../middleware/errorHandler';
@@ -61,7 +61,7 @@ export class ApplicantController {
       const { rows, count } = await Applicant.findAndCountAll({
         where,
         include: [{ model: Client, attributes: ['id', 'businessName'] }],
-        order: [['createdAt', 'DESC']],
+        order: [literal('"ai_score" DESC NULLS LAST'), ['createdAt', 'DESC']],
         limit: parseInt(limit as string),
         offset,
       });
@@ -101,7 +101,7 @@ export class ApplicantController {
       const { rows, count } = await Applicant.findAndCountAll({
         where,
         attributes: { exclude: ['adminNotes'] },
-        order: [['createdAt', 'DESC']],
+        order: [literal('"ai_score" DESC NULLS LAST'), ['createdAt', 'DESC']],
         limit: parseInt(limit as string),
         offset,
       });
@@ -141,7 +141,15 @@ export class ApplicantController {
       const applicant = await Applicant.findByPk(req.params.id);
       if (!applicant) throw new AppError('Applicant not found', 404);
 
-      const updates = { ...req.body };
+      const allowedFields = [
+        'firstName', 'lastName', 'email', 'phone', 'source',
+        'avpStatus', 'backgroundStatus', 'drugScreenStatus', 'medCardStatus',
+        'hireStatus', 'interviewDate', 'interviewSlotId', 'adminNotes',
+      ];
+      const updates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
 
       // Recalculate pipeline status when vetting fields change
       const vettingFields = ['avpStatus', 'backgroundStatus', 'drugScreenStatus', 'medCardStatus'];
@@ -215,7 +223,15 @@ export class ApplicantController {
   bulkUpdate = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { ids, updates } = req.body;
-      await Applicant.update(updates, { where: { id: ids } });
+      const allowedFields = [
+        'avpStatus', 'backgroundStatus', 'drugScreenStatus', 'medCardStatus',
+        'hireStatus', 'adminNotes',
+      ];
+      const safeUpdates: Record<string, unknown> = {};
+      for (const field of allowedFields) {
+        if (updates?.[field] !== undefined) safeUpdates[field] = updates[field];
+      }
+      await Applicant.update(safeUpdates, { where: { id: ids } });
       res.json({ success: true, message: `${ids.length} applicants updated` });
     } catch (err) {
       next(err);
@@ -231,9 +247,10 @@ export class ApplicantController {
 
       const applicants = await Applicant.findAll({ where });
 
-      const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'AVP', 'Background', 'Drug Screen', 'Med Card', 'Status', 'Hire Status', 'Created'];
+      const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'AI Score', 'AI Alignment', 'AVP', 'Background', 'Drug Screen', 'Med Card', 'Status', 'Hire Status', 'Created'];
       const rows = applicants.map((a) => [
         a.firstName, a.lastName, a.email, a.phone,
+        a.aiScore ?? '', a.aiRecommendation || '',
         a.avpStatus, a.backgroundStatus, a.drugScreenStatus, a.medCardStatus,
         a.pipelineStatus, a.hireStatus || '', a.createdAt.toISOString(),
       ]);

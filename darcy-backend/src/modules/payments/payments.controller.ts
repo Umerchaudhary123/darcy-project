@@ -51,11 +51,6 @@ export class PaymentsController {
   };
 
   webhook = async (req: Request, res: Response) => {
-    console.log('🔥 WEBHOOK ROUTE HIT');
-    console.log('🔥 BODY IS BUFFER:', Buffer.isBuffer(req.body) ? '✅ YES' : '❌ NO - THIS IS THE PROBLEM');
-    console.log('🔥 STRIPE-SIGNATURE:', req.headers['stripe-signature'] ? '✅ EXISTS' : '❌ MISSING');
-    console.log('🔥 WEBHOOK SECRET SET:', process.env.STRIPE_WEBHOOK_SECRET ? '✅ YES' : '❌ NO');
-
     const sig = req.headers['stripe-signature'] as string;
     let event: Stripe.Event;
 
@@ -66,13 +61,10 @@ export class PaymentsController {
         process.env.STRIPE_WEBHOOK_SECRET as string
       );
     } catch (err: any) {
-      console.log('❌ SIGNATURE VERIFICATION FAILED:', err.message);
       logger.error('Webhook signature verification failed:', err);
       res.status(400).send('Webhook error');
       return;
     }
-
-    console.log('✅ EVENT VERIFIED:', event.type, event.id);
 
     try {
       switch (event.type) {
@@ -89,10 +81,9 @@ export class PaymentsController {
           await this._handlePaymentFailed(event.data.object as Stripe.Invoice);
           break;
         default:
-          console.log('ℹ️ UNHANDLED EVENT:', event.type);
+          logger.debug(`Unhandled Stripe event: ${event.type}`);
       }
     } catch (err) {
-      console.log('❌ WEBHOOK PROCESSING ERROR:', err);
       logger.error('Webhook processing error:', err);
     }
 
@@ -100,33 +91,24 @@ export class PaymentsController {
   };
 
   private _handleCheckoutComplete = async (session: Stripe.Checkout.Session) => {
-    console.log('🔥 _handleCheckoutComplete CALLED');
-    console.log('🔥 SESSION ID:', session.id);
-    console.log('🔥 METADATA:', JSON.stringify(session.metadata));
-    console.log('🔥 CUSTOMER EMAIL:', session.customer_email);
-
     const { onboardingId, businessName, plan } = session.metadata || {};
 
     if (!onboardingId) {
-      console.log('❌ NO ONBOARDING ID - SKIPPING');
+      logger.warn(`Stripe checkout ${session.id} has no onboardingId; skipping fulfillment.`);
       return;
     }
 
     const pending = await PendingOnboarding.findByPk(onboardingId);
     if (!pending) {
-      console.log('❌ PENDING NOT FOUND:', onboardingId);
+      logger.warn(`Pending onboarding ${onboardingId} was not found; skipping fulfillment.`);
       return;
     }
 
-    console.log('✅ PENDING FOUND:', pending.email, pending.businessName);
-
     const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string);
-    console.log('✅ STRIPE SUB RETRIEVED:', stripeSub.id);
 
     // Check if client already exists for this email (prevents duplicate webhook crash)
     const existingClient = await Client.findOne({ where: { email: pending.email } });
     if (existingClient) {
-      console.log('ℹ️ CLIENT ALREADY EXISTS FOR THIS EMAIL — SKIPPING DUPLICATE CREATE:', existingClient.id);
       await pending.update({ status: 'completed' });
       return;
     }
@@ -141,9 +123,6 @@ export class PaymentsController {
         role: 'client',
         isActive: false,
       });
-      console.log('✅ USER CREATED:', user.id, user.email);
-    } else {
-      console.log('ℹ️ USER ALREADY EXISTS:', user.id, user.email);
     }
 
     const maxOrder = (await Client.max('displayOrder') as number) || 0;
@@ -163,8 +142,6 @@ export class PaymentsController {
       stripeCustomerId: session.customer as string,
     });
 
-    console.log('✅ CLIENT CREATED:', client.id, client.businessName);
-
     await Subscription.create({
       clientId: client.id,
       plan: plan || 'P&D',
@@ -175,8 +152,6 @@ export class PaymentsController {
       currentPeriodEnd: new Date((stripeSub as any).current_period_end * 1000),
       monthlyAmount: (stripeSub.items.data[0]?.price.unit_amount || 0) / 100,
     });
-
-    console.log('✅ SUBSCRIPTION CREATED');
 
     await pending.update({ status: 'completed' });
     logger.info(`🎉 New client created: ${client.businessName} (${client.id})`);
@@ -223,15 +198,12 @@ export class PaymentsController {
   getCheckoutSession = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { sessionId } = req.params;
-      console.log('🔥 GET CHECKOUT SESSION:', sessionId);
 
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
       const user = session.customer_email
         ? await User.findOne({ where: { email: session.customer_email } })
         : null;
-
-      console.log('🔥 USER FOUND:', user ? user.id : 'NULL');
 
       res.json({
         success: true,
@@ -241,18 +213,6 @@ export class PaymentsController {
           status: session.payment_status,
         },
       });
-    } catch (err) {
-      next(err);
-    }
-  };
-  manualComplete = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { sessionId } = req.params;
-      console.log('🔧 MANUAL COMPLETE:', sessionId);
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-      console.log('🔧 SESSION METADATA:', JSON.stringify(session.metadata));
-      await this._handleCheckoutComplete(session);
-      res.json({ success: true, message: 'Done' });
     } catch (err) {
       next(err);
     }

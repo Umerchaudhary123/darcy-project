@@ -5,9 +5,11 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
 import { rateLimit } from 'express-rate-limit';
 import { sequelize } from './config/database';
 import logger from './utils/logger';
+import { initFirebase } from './utils/firebase';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 
@@ -23,6 +25,7 @@ import documentRoutes from './modules/document/document.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import paymentRoutes from './modules/payments/payments.routes';
 import notificationRoutes from './modules/notifications/notifications.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const app = express();
 
@@ -70,6 +73,13 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Local development fallback. Production should configure S3 because Railway's
+// container filesystem is ephemeral.
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+  fallthrough: false,
+  maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+}));
+
 // Health check
 app.get('/health', (_req, res) => {
   res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
@@ -88,6 +98,7 @@ app.use(`${API}/documents`, documentRoutes);
 app.use(`${API}/subscriptions`, subscriptionRoutes);
 app.use(`${API}/payments`, paymentRoutes);
 app.use(`${API}/notifications`, notificationRoutes);
+app.use(`${API}/ai`, aiRoutes);
 
 // Error handling
 app.use(notFound);
@@ -97,6 +108,7 @@ app.use(errorHandler);
 async function bootstrap() {
   try {
     await sequelize.authenticate();
+    initFirebase();
 
     console.log('✅ Database connected');
     console.log(`🚀 Server starting on port ${PORT}`);

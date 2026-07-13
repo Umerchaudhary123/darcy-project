@@ -45,7 +45,7 @@ export const AccountSetupPage: React.FC = () => {
       }
     };
     verify();
-  }, [stripeSessionId]);
+  }, [navigate, stripeSessionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

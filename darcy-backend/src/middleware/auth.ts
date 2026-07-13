@@ -33,22 +33,15 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction) =
       process.env.JWT_SECRET as string
     ) as JwtPayload;
 
-    console.log('🔥 AUTH TOKEN:', token);
-    console.log('🔥 DECODED USER:', decoded);
-
     req.user = decoded;
     next();
-  } catch (err) {
-    console.log('❌ JWT VERIFY FAILED:', err);
+  } catch {
     next(new AppError('Invalid or expired token', 401));
   }
 };
 
 export const requireRole = (...roles: string[]) => {
   return (req: Request, _res: Response, next: NextFunction) => {
-    console.log('🔥 REQUIRED ROLES:', roles);
-    console.log('🔥 USER ROLE:', req.user?.role);
-
     if (!req.user) {
       return next(new AppError('Unauthorized', 401));
     }

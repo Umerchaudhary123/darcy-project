@@ -119,6 +119,21 @@ getMyStats: () =>
     api.get('/applicants/export/csv', { params: { clientId }, responseType: 'blob' }),
 };
 
+// ─── AI screening and pipeline assistant ────────────────────────────────────
+export const aiApi = {
+  screenApplicant: (applicantId: string, formData: FormData) =>
+    api.post<ApiResponse<Applicant>>(`/ai/applicants/${applicantId}/screen`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }),
+
+  askAssistant: (question: string, clientId?: string) =>
+    api.post<ApiResponse<{ answer: string }>>('/ai/assistant', {
+      question,
+      ...(clientId ? { clientId } : {}),
+    }, { timeout: 120000 }),
+};
+
 // ─── Availability ─────────────────────────────────────────────────────────────
 export const availabilityApi = {
   getMySlots: (params?: { from?: string; to?: string }) =>

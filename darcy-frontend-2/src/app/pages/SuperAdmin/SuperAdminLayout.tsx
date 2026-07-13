@@ -94,13 +94,13 @@ export const SuperAdminClients: React.FC = () => {
   const [orderDirty, setOrderDirty] = useState(false);
   const navigate = useNavigate();
 
-  const load = useCallback(async (reset = true) => {
+  const load = useCallback(async (reset = true, nextCursor?: string | null) => {
     if (reset) setLoading(true); else setLoadingMore(true);
     try {
       const res = await adminApi.getClients({
         search: search || undefined,
         status: status !== 'all' ? status : undefined,
-        cursor: reset ? undefined : cursor || undefined,
+        cursor: reset ? undefined : nextCursor || undefined,
         limit: 20,
       });
       const newClients = res.data.data;
@@ -111,9 +111,9 @@ export const SuperAdminClients: React.FC = () => {
     } catch { } finally {
       if (reset) setLoading(false); else setLoadingMore(false);
     }
-  }, [search, status, cursor]);
+  }, [search, status]);
 
-  useEffect(() => { load(true); }, [search, status]);
+  useEffect(() => { load(true); }, [load]);
 
   const moveRow = (from: number, to: number) => {
     setClients((prev) => {
@@ -185,7 +185,7 @@ export const SuperAdminClients: React.FC = () => {
 
         {hasMore && (
           <div className="flex justify-center mt-6">
-            <Button variant="secondary" loading={loadingMore} onClick={() => load(false)}>
+            <Button variant="secondary" loading={loadingMore} onClick={() => load(false, cursor)}>
               Load More
             </Button>
           </div>

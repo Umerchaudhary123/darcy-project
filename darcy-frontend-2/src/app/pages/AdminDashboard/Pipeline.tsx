@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
-import { applicantsApi, adminApi } from '../../../services';
-import { PageHeader, SearchInput, StatusBadge, Spinner, EmptyState, Modal, Input, Select, Button, StatCard, Tabs, Pagination } from '../../components/ui';
+import { applicantsApi, adminApi, aiApi } from '../../../services';
+import { PageHeader, SearchInput, StatusBadge, Spinner, EmptyState, Modal, Input, Select, Button, StatCard, Tabs, Pagination, Textarea } from '../../components/ui';
 import { formatDate } from '../../../utils';
 import type { Applicant, Client, PipelineStats } from '../../../types';
-import { Users, Plus, Trash2, Download, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Plus, Trash2, Download, Edit2, ChevronDown, ChevronUp, Sparkles, Bot, Upload } from 'lucide-react';
 
 const VETTING_OPTIONS = {
   avpStatus: [
@@ -42,12 +43,40 @@ const VETTING_OPTIONS = {
   ],
 };
 
+const AI_LABELS = {
+  high_alignment: 'High alignment',
+  good_alignment: 'Good alignment',
+  review: 'Review',
+  limited_evidence: 'Limited evidence',
+} as const;
+
+const AiScoreBadge: React.FC<{ applicant: Applicant }> = ({ applicant }) => {
+  if (applicant.aiScore == null) {
+    return <span className="text-xs text-muted-foreground">Not screened</span>;
+  }
+
+  const color = applicant.aiScore >= 80
+    ? 'border-green-500/40 bg-green-500/10 text-green-400'
+    : applicant.aiScore >= 65
+      ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+      : applicant.aiScore >= 45
+        ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400'
+        : 'border-orange-500/40 bg-orange-500/10 text-orange-400';
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${color}`}>
+      <Sparkles className="w-3 h-3" /> {applicant.aiScore}/100
+    </span>
+  );
+};
+
 // ─── Mobile Applicant Card ────────────────────────────────────────────────
 const ApplicantMobileCard: React.FC<{
   applicant: Applicant;
   onEdit: (a: Applicant) => void;
   onDelete: (id: string) => void;
-}> = ({ applicant: a, onEdit, onDelete }) => {
+  onScreen: (a: Applicant) => void;
+}> = ({ applicant: a, onEdit, onDelete, onScreen }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -65,6 +94,7 @@ const ApplicantMobileCard: React.FC<{
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          <AiScoreBadge applicant={a} />
           <StatusBadge status={a.pipelineStatus} />
           <button onClick={() => setExpanded(!expanded)} className="btn-ghost p-1.5">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -107,11 +137,23 @@ const ApplicantMobileCard: React.FC<{
               <p>{a.adminNotes}</p>
             </div>
           )}
+          {a.aiAssessment && (
+            <div className="bg-primary/5 border border-primary/20 rounded p-3 text-xs space-y-1">
+              <p className="text-primary font-medium">AI CV summary</p>
+              <p className="text-muted-foreground">{a.aiAssessment.summary}</p>
+            </div>
+          )}
         </div>
       )}
 
       {/* Actions */}
       <div className="flex gap-2 pt-1 border-t border-border">
+        <button
+          onClick={() => onScreen(a)}
+          className="flex-1 btn-secondary text-xs py-2 flex items-center justify-center gap-1.5"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> {a.aiScore == null ? 'Screen CV' : 'AI Details'}
+        </button>
         <button
           onClick={() => onEdit(a)}
           className="flex-1 btn-secondary text-xs py-2 flex items-center justify-center gap-1.5"
@@ -147,6 +189,14 @@ export const AdminPipeline: React.FC = () => {
   const [addForm, setAddForm] = useState({ clientId: '', firstName: '', lastName: '', email: '', phone: '', source: 'Direct' });
   const [editForm, setEditForm] = useState<Partial<Applicant>>({});
   const [saving, setSaving] = useState(false);
+  const [screenModal, setScreenModal] = useState<{ open: boolean; applicant: Applicant | null }>({ open: false, applicant: null });
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [screenCriteria, setScreenCriteria] = useState('');
+  const [screening, setScreening] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantQuestion, setAssistantQuestion] = useState('');
+  const [assistantAnswer, setAssistantAnswer] = useState('');
+  const [assistantLoading, setAssistantLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,6 +262,50 @@ export const AdminPipeline: React.FC = () => {
     } catch { toast.error('Failed to delete'); }
   };
 
+  const openScreen = (applicant: Applicant) => {
+    setScreenModal({ open: true, applicant });
+    setCvFile(null);
+    setScreenCriteria(applicant.aiAssessment?.criteria || '');
+  };
+
+  const runScreening = async () => {
+    if (!screenModal.applicant || !cvFile) {
+      toast.error('Please attach a CV file');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('cv', cvFile);
+    if (screenCriteria.trim()) formData.append('criteria', screenCriteria.trim());
+
+    setScreening(true);
+    try {
+      const response = await aiApi.screenApplicant(screenModal.applicant.id, formData);
+      setScreenModal({ open: true, applicant: response.data.data });
+      setCvFile(null);
+      toast.success(`CV screened — AI score ${response.data.data.aiScore}/100`);
+      await load();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'AI screening failed');
+    } finally {
+      setScreening(false);
+    }
+  };
+
+  const askAssistant = async () => {
+    if (assistantQuestion.trim().length < 3) return;
+    setAssistantLoading(true);
+    setAssistantAnswer('');
+    try {
+      const response = await aiApi.askAssistant(assistantQuestion.trim(), clientFilter || undefined);
+      setAssistantAnswer(response.data.data.answer);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'AI assistant failed');
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
+
   const exportCsv = async () => {
     try {
       const res = await applicantsApi.exportCsv(clientFilter || undefined);
@@ -239,7 +333,10 @@ export const AdminPipeline: React.FC = () => {
         title="Applicant Pipeline"
         description={`${total} applicants`}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setAssistantOpen(true)} icon={<Bot className="w-3.5 h-3.5" />}>
+              AI Assistant
+            </Button>
             <Button variant="secondary" size="sm" onClick={exportCsv} icon={<Download className="w-3.5 h-3.5" />}>
               Export
             </Button>
@@ -297,6 +394,7 @@ export const AdminPipeline: React.FC = () => {
                 applicant={a}
                 onEdit={openEdit}
                 onDelete={deleteApplicant}
+                onScreen={openScreen}
               />
             ))}
           </div>
@@ -307,7 +405,7 @@ export const AdminPipeline: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    {['Applicant', 'Client', 'AVP', 'Background', 'Drug', 'Med Card', 'Status', 'Added', 'Actions'].map((h) => (
+                    {['Applicant', 'Client', 'AI Score', 'AVP', 'Background', 'Drug', 'Med Card', 'Status', 'Added', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -324,6 +422,7 @@ export const AdminPipeline: React.FC = () => {
                       <td className="px-4 py-3">
                         <span className="text-xs text-muted-foreground">{(a.client as any)?.businessName || '—'}</span>
                       </td>
+                      <td className="px-4 py-3"><AiScoreBadge applicant={a} /></td>
                       <td className="px-4 py-3"><StatusBadge status={a.avpStatus} /></td>
                       <td className="px-4 py-3"><StatusBadge status={a.backgroundStatus} /></td>
                       <td className="px-4 py-3"><StatusBadge status={a.drugScreenStatus} /></td>
@@ -334,10 +433,13 @@ export const AdminPipeline: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => openEdit(a)} className="btn-ghost p-1.5">
+                          <button onClick={() => openScreen(a)} className="btn-ghost p-1.5 text-primary" title="AI CV screening" aria-label={`Screen CV for ${a.firstName} ${a.lastName}`}>
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => openEdit(a)} className="btn-ghost p-1.5" aria-label={`Edit ${a.firstName} ${a.lastName}`}>
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => deleteApplicant(a.id)} className="btn-ghost p-1.5 text-destructive hover:text-destructive">
+                          <button onClick={() => deleteApplicant(a.id)} className="btn-ghost p-1.5 text-destructive hover:text-destructive" aria-label={`Delete ${a.firstName} ${a.lastName}`}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -352,6 +454,163 @@ export const AdminPipeline: React.FC = () => {
       )}
 
       <Pagination page={page} pages={pages} onPage={setPage} />
+
+      {/* CV screening */}
+      <Modal
+        open={screenModal.open}
+        onClose={() => setScreenModal({ open: false, applicant: null })}
+        title={`AI CV Screening${screenModal.applicant ? ` — ${screenModal.applicant.firstName} ${screenModal.applicant.lastName}` : ''}`}
+        size="lg"
+      >
+        {screenModal.applicant && (
+          <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-5">
+            {screenModal.applicant.aiAssessment && (
+              <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <AiScoreBadge applicant={screenModal.applicant} />
+                  <span className="text-sm font-medium">
+                    {screenModal.applicant.aiRecommendation
+                      ? AI_LABELS[screenModal.applicant.aiRecommendation]
+                      : 'AI assessment'}
+                  </span>
+                  {screenModal.applicant.resumeFileName && (
+                    <span className="text-xs text-muted-foreground">{screenModal.applicant.resumeFileName}</span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">{screenModal.applicant.aiAssessment.summary}</p>
+
+                <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium text-green-400 mb-2">Strengths</p>
+                    <ul className="space-y-1 text-muted-foreground list-disc pl-4">
+                      {screenModal.applicant.aiAssessment.strengths.map((item, index) => <li key={`strength-${index}-${item}`}>{item}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-yellow-400 mb-2">Verify / discuss</p>
+                    <ul className="space-y-1 text-muted-foreground list-disc pl-4">
+                      {[...screenModal.applicant.aiAssessment.concerns, ...screenModal.applicant.aiAssessment.missingRequirements]
+                        .slice(0, 8)
+                        .map((item, index) => <li key={`verify-${index}-${item}`}>{item}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                  {[
+                    ['Experience', screenModal.applicant.aiAssessment.scoreBreakdown.relevantExperience, 30],
+                    ['Skills', screenModal.applicant.aiAssessment.scoreBreakdown.licensesAndSkills, 25],
+                    ['Safety', screenModal.applicant.aiAssessment.scoreBreakdown.safetyAndCompliance, 20],
+                    ['History', screenModal.applicant.aiAssessment.scoreBreakdown.workHistory, 15],
+                    ['CV clarity', screenModal.applicant.aiAssessment.scoreBreakdown.resumeQuality, 10],
+                  ].map(([label, value, max]) => (
+                    <div key={String(label)} className="bg-secondary rounded p-2">
+                      <p className="text-lg font-semibold">{String(value)}<span className="text-xs text-muted-foreground">/{String(max)}</span></p>
+                      <p className="text-xs text-muted-foreground">{String(label)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {screenModal.applicant.aiAssessment.suggestedInterviewQuestions.length > 0 && (
+                  <div>
+                    <p className="font-medium text-sm mb-2">Suggested interview questions</p>
+                    <ol className="space-y-1 text-sm text-muted-foreground list-decimal pl-4">
+                      {screenModal.applicant.aiAssessment.suggestedInterviewQuestions.map((item, index) => <li key={`question-${index}-${item}`}>{item}</li>)}
+                    </ol>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground border-t border-border pt-3">
+                  {screenModal.applicant.aiAssessment.disclaimer}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1.5">
+                  {screenModal.applicant.aiScore == null ? 'Upload CV' : 'Upload a new CV to re-screen'}
+                </label>
+                <div className="relative">
+                  <Upload className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="file"
+                    className="input-field pl-9 text-sm file:mr-3 file:border-0 file:bg-transparent file:text-foreground"
+                    accept=".pdf,.docx,.txt"
+                    aria-label={`Upload CV for ${screenModal.applicant.firstName} ${screenModal.applicant.lastName}`}
+                    onChange={(event) => setCvFile(event.target.files?.[0] || null)}
+                  />
+                </div>
+              </div>
+              <Textarea
+                label="Role requirements (optional)"
+                value={screenCriteria}
+                onChange={(event) => setScreenCriteria(event.target.value)}
+                placeholder="Leave blank to use the client's P&D/Linehaul criteria, or add specific license and experience requirements."
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                CV text is extracted on the backend. OpenRouter's free model is used when configured; a local rubric fallback keeps screening available during free-tier limits. The score is decision support, not an automatic hiring decision.
+              </p>
+            </div>
+          </div>
+        )}
+        <div className="flex justify-end gap-3 mt-5">
+          <Button variant="secondary" onClick={() => setScreenModal({ open: false, applicant: null })}>Close</Button>
+          <Button loading={screening} disabled={!cvFile} onClick={runScreening} icon={<Sparkles className="w-4 h-4" />}>
+            {screenModal.applicant?.aiScore == null ? 'Analyze CV' : 'Re-analyze CV'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Pipeline assistant */}
+      <Modal open={assistantOpen} onClose={() => setAssistantOpen(false)} title="Darcy AI Pipeline Assistant" size="lg">
+        <div className="space-y-4">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+            Ask about ranked candidates, missing screening steps, interview priorities, or pipeline workload.
+            {clientFilter && <span className="text-primary"> The current client filter will be applied.</span>}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              'Who are the top CV matches and why?',
+              'Which candidates need human review next?',
+              'Summarize missing screening steps.',
+            ].map((question) => (
+              <button key={question} onClick={() => setAssistantQuestion(question)} className="btn-secondary text-xs px-3 py-2">
+                {question}
+              </button>
+            ))}
+          </div>
+          <Textarea
+            label="Ask the assistant"
+            value={assistantQuestion}
+            onChange={(event) => setAssistantQuestion(event.target.value)}
+            placeholder="Example: Compare the top five applicants using job-relevant evidence."
+            rows={3}
+          />
+          {assistantLoading && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner size="sm" /> Reviewing pipeline…</div>}
+          {assistantAnswer && (
+            <div className="rounded-lg bg-secondary p-4 text-sm leading-relaxed">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                  ul: ({ children }) => <ul className="mb-3 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-3 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>,
+                  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                }}
+              >
+                {assistantAnswer}
+              </ReactMarkdown>
+              <p className="text-xs text-muted-foreground border-t border-border mt-4 pt-3">AI assistance only — verify the source data before taking hiring action.</p>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-3 mt-5">
+          <Button variant="secondary" onClick={() => setAssistantOpen(false)}>Close</Button>
+          <Button loading={assistantLoading} disabled={assistantQuestion.trim().length < 3} onClick={askAssistant} icon={<Bot className="w-4 h-4" />}>
+            Ask AI
+          </Button>
+        </div>
+      </Modal>
 
       {/* Add Modal */}
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Applicant" size="md">

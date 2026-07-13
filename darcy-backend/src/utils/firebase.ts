@@ -1,22 +1,28 @@
-import admin from 'firebase-admin';
+import { App, cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import logger from './logger';
 
-let firebaseApp: admin.app.App | null = null;
+let firebaseApp: App | null = null;
 
 export const initFirebase = () => {
   if (firebaseApp) return firebaseApp;
 
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+
+  if (!projectId || !privateKey || !clientEmail) {
+    logger.info('Firebase Admin is not configured; push notifications are disabled.');
+    return null;
+  }
+
   try {
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      }),
+    firebaseApp = getApps()[0] || initializeApp({
+      credential: cert({ projectId, privateKey, clientEmail }),
     });
     logger.info('Firebase Admin initialized');
-  } catch (err) {
-    logger.warn('Firebase init failed (non-critical):', err);
+  } catch (error) {
+    logger.warn('Firebase init failed (non-critical):', error);
   }
 
   return firebaseApp;
@@ -28,14 +34,11 @@ export const sendFirebaseNotification = async (
 ) => {
   if (!firebaseApp) return;
   try {
-    // In production: store FCM tokens per user and send targeted notifications
+    // In production: store FCM tokens per user and send targeted notifications.
     logger.info(`Firebase notification queued for user ${userId}: ${payload.title}`);
-  } catch (err) {
-    logger.warn('Firebase notification error:', err);
+  } catch (error) {
+    logger.warn('Firebase notification error:', error);
   }
 };
 
-export const getFirestore = () => {
-  if (!firebaseApp) return null;
-  return admin.firestore();
-};
+export const getFirestore = () => firebaseApp ? getAdminFirestore(firebaseApp) : null;

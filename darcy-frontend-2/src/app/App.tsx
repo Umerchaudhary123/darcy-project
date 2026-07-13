@@ -36,7 +36,7 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       loadUser();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadUser]);
 
   if (isLoading) return <LoadingScreen />;
 

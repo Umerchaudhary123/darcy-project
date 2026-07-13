@@ -1,5 +1,8 @@
 {
   "scripts": {
     "dev": "concurrently \"cd darcy-backend && npm run dev\" \"cd darcy-frontend-2 && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
   }
 }

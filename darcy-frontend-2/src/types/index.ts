@@ -56,9 +56,34 @@ export interface Applicant {
   clientNotes?: string;
   source?: string;
   disqualifiedAt?: string;
+  aiScore?: number | null;
+  aiRecommendation?: 'high_alignment' | 'good_alignment' | 'review' | 'limited_evidence' | null;
+  aiAssessment?: AiAssessment | null;
+  aiAnalyzedAt?: string | null;
+  aiModel?: string | null;
+  resumeFileName?: string | null;
   createdAt: string;
   updatedAt: string;
   client?: Pick<Client, 'id' | 'businessName'>;
+}
+
+export interface AiAssessment {
+  scoreBreakdown: {
+    relevantExperience: number;
+    licensesAndSkills: number;
+    safetyAndCompliance: number;
+    workHistory: number;
+    resumeQuality: number;
+  };
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  matchedSkills: string[];
+  missingRequirements: string[];
+  suggestedInterviewQuestions: string[];
+  experienceYears: number | null;
+  criteria: string;
+  disclaimer: string;
 }
 
 export interface Subscription {

@@ -5,6 +5,11 @@ dotenv.config();
 import { Sequelize, DataTypes } from 'sequelize';
 import logger from '../utils/logger';
 
+const databaseUrl = process.env.DATABASE_URL || '';
+if (!/^postgres(?:ql)?:\/\//i.test(databaseUrl)) {
+  throw new Error('DATABASE_URL must be a PostgreSQL/Neon connection string before migrations can run.');
+}
+
 const sequelize = new Sequelize(process.env.DATABASE_URL!, {
   dialect: 'postgres',
   protocol: 'postgres',
@@ -16,6 +21,39 @@ const sequelize = new Sequelize(process.env.DATABASE_URL!, {
   },
   logging: false,
 });
+
+async function ensureJsonbColumn(table: string, column: string) {
+  const qi = sequelize.getQueryInterface();
+  const columns = await qi.describeTable(table);
+  const current = columns[column];
+
+  if (!current) {
+    await qi.addColumn(table, column, { type: DataTypes.JSONB, allowNull: true });
+    return;
+  }
+
+  if (!String(current.type).toUpperCase().includes('JSONB')) {
+    await sequelize.query(`
+      CREATE OR REPLACE FUNCTION darcy_safe_jsonb(value TEXT)
+      RETURNS JSONB AS $$
+      BEGIN
+        IF value IS NULL OR BTRIM(value) = '' THEN
+          RETURN NULL;
+        END IF;
+        RETURN value::JSONB;
+      EXCEPTION WHEN OTHERS THEN
+        RETURN JSONB_BUILD_OBJECT('legacyValue', value);
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    await sequelize.query(`
+      ALTER TABLE "${table}"
+      ALTER COLUMN "${column}" TYPE JSONB
+      USING darcy_safe_jsonb("${column}"::TEXT);
+    `);
+    await sequelize.query('DROP FUNCTION IF EXISTS darcy_safe_jsonb(TEXT);');
+  }
+}
 
 async function migrate() {
   const qi = sequelize.getQueryInterface();
@@ -100,10 +138,12 @@ async function migrate() {
       stripe_session_id: { type: DataTypes.STRING(255) },
       invite_token: { type: DataTypes.STRING(255) },
       invite_expires_at: { type: DataTypes.DATE },
-      form_data: { type: DataTypes.TEXT },
+      form_data: { type: DataTypes.JSONB },
       created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
       updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     }).catch(() => logger.info('pending_onboardings table exists'));
+
+    await ensureJsonbColumn('pending_onboardings', 'form_data');
 
     // Subscriptions
     await qi.createTable('subscriptions', {
@@ -145,9 +185,40 @@ async function migrate() {
       disqualified_at: { type: DataTypes.DATE },
       non_qualified_at: { type: DataTypes.DATE },
       source: { type: DataTypes.STRING(100) },
+      ai_score: { type: DataTypes.INTEGER },
+      ai_recommendation: { type: DataTypes.STRING(30) },
+      ai_assessment: { type: DataTypes.JSONB },
+      ai_analyzed_at: { type: DataTypes.DATE },
+      ai_model: { type: DataTypes.STRING(100) },
+      resume_file_name: { type: DataTypes.STRING(255) },
       created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
       updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     }).catch(() => logger.info('applicants table exists'));
+
+    // Upgrade existing applicant tables with AI screening columns.
+    const applicantColumns = await qi.describeTable('applicants');
+    const aiColumns: Record<string, any> = {
+      ai_score: { type: DataTypes.INTEGER },
+      ai_recommendation: { type: DataTypes.STRING(30) },
+      ai_assessment: { type: DataTypes.JSONB },
+      ai_analyzed_at: { type: DataTypes.DATE },
+      ai_model: { type: DataTypes.STRING(100) },
+      resume_file_name: { type: DataTypes.STRING(255) },
+    };
+
+    for (const [column, definition] of Object.entries(aiColumns)) {
+      if (!applicantColumns[column]) {
+        await qi.addColumn('applicants', column, definition);
+      }
+    }
+
+    await qi.addIndex('applicants', ['ai_score'], {
+      name: 'applicants_ai_score_idx',
+    }).catch(() => logger.info('applicants AI score index exists'));
+
+    await qi.addIndex('applicants', ['client_id', 'ai_score'], {
+      name: 'applicants_client_ai_score_idx',
+    }).catch(() => logger.info('applicants client/AI score index exists'));
 
     // Availability slots
     await qi.createTable('availability_slots', {
@@ -219,10 +290,12 @@ async function migrate() {
       type: { type: DataTypes.STRING(50), allowNull: false },
       is_read: { type: DataTypes.BOOLEAN, defaultValue: false },
       link_url: { type: DataTypes.TEXT },
-      metadata: { type: DataTypes.TEXT },
+      metadata: { type: DataTypes.JSONB },
       created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
       updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     }).catch(() => logger.info('notifications table exists'));
+
+    await ensureJsonbColumn('notifications', 'metadata');
 
     // Time tracking
     await qi.createTable('time_trackings', {

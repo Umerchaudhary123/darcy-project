@@ -4,7 +4,7 @@ import { applicantsApi } from '../../../services';
 import { PageHeader, SearchInput, StatusBadge, Spinner, EmptyState, Pagination, Modal, Textarea, Button, Tabs } from '../../components/ui';
 import { formatDate } from '../../../utils';
 import type { Applicant } from '../../../types';
-import { Users } from 'lucide-react';
+import { Sparkles, Users } from 'lucide-react';
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -91,6 +91,11 @@ export const ClientPipeline: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-semibold">{a.firstName} {a.lastName}</h3>
+                    {a.aiScore != null && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                        <Sparkles className="w-3 h-3" /> CV fit {a.aiScore}/100
+                      </span>
+                    )}
                     <StatusBadge status={a.pipelineStatus} />
                     {a.hireStatus && <StatusBadge status={a.hireStatus} label={a.hireStatus} />}
                   </div>
@@ -107,6 +112,12 @@ export const ClientPipeline: React.FC = () => {
                     <VettingField label="Drug Screen" status={a.drugScreenStatus} />
                     <VettingField label="Med Card" status={a.medCardStatus} />
                   </div>
+                  {a.aiAssessment?.summary && (
+                    <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded p-3 mb-2">
+                      <span className="text-primary font-medium">AI CV summary: </span>{a.aiAssessment.summary}
+                      <p className="mt-2 opacity-80">Decision support only — Darcy Staffing reviews every assessment.</p>
+                    </div>
+                  )}
                   {a.clientNotes && (
                     <div className="text-xs text-muted-foreground bg-secondary rounded p-2 mb-2">
                       <span className="text-foreground font-medium">My Note: </span>{a.clientNotes}

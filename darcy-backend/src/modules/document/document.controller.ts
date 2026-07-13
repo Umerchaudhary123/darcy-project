@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import path from 'path';
+import fs from 'fs/promises';
 import { Document } from './document.model';
 import { Client } from '../client/client.model';
-import { s3Client } from '../../middleware/upload';
+import { s3Client, uploadDir, usingS3 } from '../../middleware/upload';
 import { AppError } from '../../middleware/errorHandler';
 import { createNotification } from '../notifications/notification.service';
 import { sendEmail, emailTemplates } from '../../utils/email';
@@ -44,8 +46,6 @@ export class DocumentController {
   // Upload document (client or admin)
   upload = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log('📁 FILE UPLOAD:', req.file);
-
       if (!req.file) throw new AppError('No file uploaded', 400);
 
       const file = req.file as any;
@@ -107,14 +107,21 @@ export class DocumentController {
         if (!client || doc.clientId !== client.id) throw new AppError('Forbidden', 403);
       }
 
-      const command = new GetObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: doc.s3Key,
-        ResponseContentDisposition: `attachment; filename="${doc.originalName}"`,
-      });
+      if (usingS3 && s3Client) {
+        const command = new GetObjectCommand({
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: doc.s3Key,
+          ResponseContentDisposition: `attachment; filename="${doc.originalName.replace(/["\r\n]/g, '')}"`,
+        });
 
-      const url = await getSignedUrl(s3Client, command, { expiresIn: 300 }); // 5 min
-      res.json({ success: true, data: { url, expiresIn: 300 } });
+        const url = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+        res.json({ success: true, data: { url, expiresIn: 300 } });
+        return;
+      }
+
+      const publicBase = (process.env.BACKEND_PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+      const url = `${publicBase}/uploads/${encodeURIComponent(path.basename(doc.s3Key))}`;
+      res.json({ success: true, data: { url, expiresIn: null } });
     } catch (err) {
       next(err);
     }
@@ -177,14 +184,17 @@ export class DocumentController {
       const doc = await Document.findByPk(req.params.id);
       if (!doc) throw new AppError('Document not found', 404);
 
-      // Delete from S3
       try {
-        await s3Client.send(new DeleteObjectCommand({
-          Bucket: process.env.AWS_S3_BUCKET,
-          Key: doc.s3Key,
-        }));
-      } catch {
-        // S3 delete failed, continue with DB deletion
+        if (usingS3 && s3Client) {
+          await s3Client.send(new DeleteObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET,
+            Key: doc.s3Key,
+          }));
+        } else {
+          await fs.unlink(path.join(uploadDir, path.basename(doc.s3Key)));
+        }
+      } catch (storageError) {
+        logger.warn(`Stored file could not be deleted for document ${doc.id}: ${String(storageError)}`);
       }
 
       await doc.destroy();
