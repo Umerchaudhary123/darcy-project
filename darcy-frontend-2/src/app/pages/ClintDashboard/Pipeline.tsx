@@ -14,8 +14,8 @@ const TABS = [
 ];
 
 const VettingField: React.FC<{ label: string; status: string }> = ({ label, status }) => (
-  <div className="flex items-center justify-between text-xs">
-    <span className="text-muted-foreground">{label}</span>
+  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+    <span className="break-words text-muted-foreground">{label}</span>
     <StatusBadge status={status} />
   </div>
 );
@@ -68,7 +68,7 @@ export const ClientPipeline: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="min-w-0 animate-fade-in">
       <PageHeader title="Applicant Pipeline" description={`${total} applicants in your pipeline`} />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -83,14 +83,14 @@ export const ClientPipeline: React.FC = () => {
       ) : (
         <div className="space-y-3">
           {applicants.map((a) => (
-            <div key={a.id} className="card-base p-5">
+            <div key={a.id} className="card-base p-4 sm:p-5">
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold flex-shrink-0">
                   {a.firstName[0]}{a.lastName[0]}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <h3 className="font-semibold">{a.firstName} {a.lastName}</h3>
+                    <h3 className="break-words font-semibold">{a.firstName} {a.lastName}</h3>
                     {a.aiScore != null && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
                         <Sparkles className="w-3 h-3" /> CV fit {a.aiScore}/100
@@ -100,13 +100,13 @@ export const ClientPipeline: React.FC = () => {
                     {a.hireStatus && <StatusBadge status={a.hireStatus} label={a.hireStatus} />}
                   </div>
                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground mb-3">
-                    {a.email && <span>{a.email}</span>}
-                    {a.phone && <span>{a.phone}</span>}
+                    {a.email && <span className="break-all">{a.email}</span>}
+                    {a.phone && <span className="break-all">{a.phone}</span>}
                     <span>Added {formatDate(a.createdAt)}</span>
                     {a.interviewDate && <span className="text-green-400">Interview: {formatDate(a.interviewDate)}</span>}
                   </div>
                   {/* Vetting status (read-only) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-secondary rounded-lg mb-3">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3 p-3 bg-secondary rounded-lg mb-3">
                     <VettingField label="AVP" status={a.avpStatus} />
                     <VettingField label="Background" status={a.backgroundStatus} />
                     <VettingField label="Drug Screen" status={a.drugScreenStatus} />
@@ -124,7 +124,7 @@ export const ClientPipeline: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => openNote(a)}>
+                <Button className="w-full sm:w-auto" variant="secondary" size="sm" onClick={() => openNote(a)}>
                   {a.clientNotes ? 'Edit Note' : 'Add Note'}
                 </Button>
               </div>

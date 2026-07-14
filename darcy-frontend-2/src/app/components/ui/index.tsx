@@ -312,7 +312,7 @@ export const Tabs: React.FC<{
   active: string;
   onChange: (id: string) => void;
 }> = ({ tabs, active, onChange }) => (
-  <div className="flex max-w-full gap-1 overflow-x-auto bg-secondary rounded-lg p-1">
+  <div className="flex max-w-full flex-wrap gap-1 bg-secondary rounded-lg p-1">
     {tabs.map((t) => (
       <button
         key={t.id}

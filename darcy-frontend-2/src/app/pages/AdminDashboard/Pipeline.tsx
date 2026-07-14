@@ -82,28 +82,28 @@ const ApplicantMobileCard: React.FC<{
   return (
     <div className="card-base p-4 space-y-3">
       {/* Header Row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
             {a.firstName?.[0]}{a.lastName?.[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm truncate">{a.firstName} {a.lastName}</p>
-            <p className="text-xs text-muted-foreground truncate">{a.email || a.phone || '—'}</p>
-            <p className="text-xs text-muted-foreground truncate">{(a.client as any)?.businessName || '—'}</p>
+            <p className="break-words font-semibold text-sm">{a.firstName} {a.lastName}</p>
+            <p className="break-all text-xs text-muted-foreground">{a.email || a.phone || '—'}</p>
+            <p className="break-words text-xs text-muted-foreground">{(a.client as any)?.businessName || '—'}</p>
           </div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <AiScoreBadge applicant={a} />
-          <StatusBadge status={a.pipelineStatus} />
-          <button onClick={() => setExpanded(!expanded)} className="btn-ghost p-1.5">
+          <button onClick={() => setExpanded(!expanded)} className="btn-ghost ml-auto p-1.5" aria-label={expanded ? 'Collapse applicant details' : 'Expand applicant details'}>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <AiScoreBadge applicant={a} />
+          <StatusBadge status={a.pipelineStatus} />
         </div>
       </div>
 
       {/* Quick Status Row */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2 text-xs">
         <div className="bg-secondary rounded p-2">
           <p className="text-muted-foreground mb-1">AVP</p>
           <StatusBadge status={a.avpStatus} />
@@ -147,7 +147,7 @@ const ApplicantMobileCard: React.FC<{
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 pt-1 border-t border-border">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2 pt-1 border-t border-border">
         <button
           onClick={() => onScreen(a)}
           className="flex-1 btn-secondary text-xs py-2 flex items-center justify-center gap-1.5"

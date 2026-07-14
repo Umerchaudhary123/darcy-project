@@ -40,14 +40,14 @@ export const ClientDashboard: React.FC = () => {
   if (loading) return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;
 
   return (
-    <div className="animate-fade-in">
+    <div className="min-w-0 animate-fade-in">
       <PageHeader
         title={`Welcome back, ${user?.name?.split(' ')[0] || 'there'} 👋`}
         description="Here's what's happening with your driver pipeline."
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Applicants" value={stats.total} icon={<Users className="w-5 h-5" />} color="text-blue-400" />
         <StatCard label="Interview Ready" value={stats.interviewReady} icon={<Users className="w-5 h-5" />} color="text-green-400" trend="Passed all vetting" />
         <StatCard label="In Progress" value={stats.inProgress} icon={<Users className="w-5 h-5" />} color="text-yellow-400" />
@@ -57,7 +57,7 @@ export const ClientDashboard: React.FC = () => {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Recent Applicants */}
         <div className="lg:col-span-2 card-base p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="font-semibold">Recent Applicants</h2>
             <Link to="/pipeline" className="text-xs text-brand hover:underline">View all →</Link>
           </div>
@@ -66,15 +66,17 @@ export const ClientDashboard: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {applicants.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
-                  <div className="w-9 h-9 bg-primary/20 rounded-full flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
-                    {a.firstName[0]}{a.lastName[0]}
+                <div key={a.id} className="flex flex-col gap-3 p-3 bg-secondary rounded-lg sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-9 h-9 bg-primary/20 rounded-full flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
+                      {a.firstName[0]}{a.lastName[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium break-words">{a.firstName} {a.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(a.createdAt)}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{a.firstName} {a.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(a.createdAt)}</p>
-                  </div>
-                  <StatusBadge status={a.pipelineStatus} />
+                  <div className="sm:ml-auto"><StatusBadge status={a.pipelineStatus} /></div>
                 </div>
               ))}
             </div>
@@ -85,7 +87,7 @@ export const ClientDashboard: React.FC = () => {
         <div className="space-y-6">
           {/* Notifications */}
           <div className="card-base p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h2 className="font-semibold flex items-center gap-2">
                 Notifications
                 {unread > 0 && <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full">{unread}</span>}
@@ -128,16 +130,16 @@ export const ClientDashboard: React.FC = () => {
           {/* Recent Documents */}
           {docs.length > 0 && (
             <div className="card-base p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <h2 className="font-semibold">Recent Documents</h2>
                 <Link to="/documents" className="text-xs text-brand hover:underline">View all →</Link>
               </div>
               <div className="space-y-2">
                 {docs.map((d) => (
-                  <div key={d.id} className="flex items-center gap-2 text-sm">
+                  <div key={d.id} className="flex flex-wrap items-start gap-2 text-sm">
                     <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    <span className="truncate flex-1 text-xs">{d.originalName}</span>
-                    <StatusBadge status={d.status} />
+                    <span className="min-w-0 flex-1 break-all text-xs">{d.originalName}</span>
+                    <div className="w-full pl-5 min-[420px]:w-auto min-[420px]:pl-0"><StatusBadge status={d.status} /></div>
                   </div>
                 ))}
               </div>
